@@ -247,7 +247,7 @@ anova(MP_HSR_year, MP_HSR_null)
 anova(MP_HSR_season, MP_HSR_null)
 ```
 
-- **Madagascar plover**
+- **White-fronted plover**
 
 ```{r, warning=FALSE}
 # Annual model
