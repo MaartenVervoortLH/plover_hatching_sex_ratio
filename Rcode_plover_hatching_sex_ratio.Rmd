@@ -1,0 +1,274 @@
+---
+title: 'R-code for "No evidence of sex allocation among three sympatric plovers in Madagascar that vary in mating system"'
+author: 'Maarten Vervoort, Orsolya Vincze, Callie Gesmundo, Zak Pohlen, Sama Zefania, Tamás Székely, Luke J. Eberhart-Phillips'
+output:
+  pdf_document:
+    keep_tex: yes
+  html_document:
+    highlight: pygments
+---
+```{r, echo = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", cache = TRUE) # warning = FALSE
+```
+
+In this document we provide all the necessary code for reproducing the analyses presented in our paper.  To access the dataset and Rmarkdown file, please download this [GitHub](https://github.com/leberhartphillips/plover_hatching_sex_ratio) repository.  Simply follow the link and click on *Download ZIP* on the right-hand side of the page.  An explanation of the files in the repository can be found in the Readme file.  Please don't hesitate to contact Luke at `luke.eberhart[at]gmail.com` if you have any questions.
+
+The structure of the code we present here follows the analyses presented in the *Results* section of the paper.
+
+**Prerequisites:**
+
+* For running the complete code you need a `files` subfolder containing the raw data downloaded from **`data`** folder provided in the [GitHub](https://github.com/leberhartphillips/plover_hatching_sex_ratio) repository.
+* The following packages are needed for analysis and can be easily installed from [CRAN](http://cran.r-project.org/) by uncommenting the `install.packages` functions:
+
+```{r, results="hide", message=FALSE, cache = TRUE}
+# install.packages("dplyr")
+# install.packages("lme4")
+# install.packages("ggplot2")
+# install.packages("RColorBrewer")
+# install.packages("grid")
+library(dplyr)
+library(lme4)
+library(ggplot2)
+library(RColorBrewer)
+library(grid)
+```
+
+***
+## Loading and wrangling data
+
+To start, please load the following dataset into your R environment:
+
+- **plover chick data** in which each row is a single chick. 
+
+```{r}
+plover_chick <- 
+  read.table(file = "data/plover_chick_data.txt", 
+             header = TRUE, 
+             stringsAsFactors = FALSE, 
+             sep = "\t")
+```
+
+Define the variables of the `plover_ind` correctly.  `easting`, `northing`, and `prop_male` need to recognized as numeric; `chickID`, `nest`, `nestID`, `species`, `sex`, and `year` need to recognized as factors; and `hatch_date` needs to be recognized as a date.
+
+```{r}
+plover_chick[,c("easting", "northing")] <- 
+  lapply(plover_chick[,c("easting", "northing")], as.numeric)
+
+plover_chick[,c("chickID", "nestID", "species", "sex", "year")] <- 
+  lapply(plover_chick[,c("chickID", "nestID", "species", "sex", "year")], as.factor)
+```
+
+Summarize the `plover_chick` data such that each row represents data for a nest.
+
+```{r}
+plover_nest <- 
+  plover_chick %>% 
+  dplyr::group_by(species, year, nestID) %>%
+  dplyr::summarise(no_males = sum(male),
+                   no_females = sum(female),
+                   Year = first(year),
+                   dateinseason = first(dateinseason),
+                   easting = first(easting),
+                   northing = first(northing),
+                   brood_size = no_males + no_females,
+                   prop_male = no_males / brood_size)
+```
+
+***
+## Do hatching sex ratios deviate from parity?
+
+Linear regression mixed models for each species predicting deviation in hatching sex ratio while controlling for non-independence in siblings (i.e. random effect: `nestID`).
+
+- **Kittlitz's plover**
+
+```{r}
+KiP_HSR_model <- lme4::glmer(cbind(no_males, no_females) ~ (1| nestID),
+                          data = dplyr::filter(plover_nest, species == "Kittlitz's"),
+                          family = binomial)
+summary(KiP_HSR_model)
+```
+
+- **Madagascar plover**
+
+```{r}
+MP_HSR_model <- lme4::glmer(cbind(no_males, no_females) ~ (1| nestID),
+                          data = dplyr::filter(plover_nest, species == "Madagascar"),
+                          family = binomial)
+summary(MP_HSR_model)
+```
+
+- **White-fronted plover**
+
+```{r}
+WfP_HSR_model <- lme4::glmer(cbind(no_males, no_females) ~ (1| nestID),
+                          data = dplyr::filter(plover_nest, species == "White-fronted"),
+                          family = binomial)
+summary(WfP_HSR_model)
+```
+
+Summarize the `plover_nest` data such that each row represents a species.
+
+```{r}
+plover_summary <- 
+  plover_nest %>%
+  dplyr::group_by(species) %>%
+  dplyr::summarise(n_chicks = sum(brood_size),
+                   n_nests = length(prop_male),
+                   mean = mean(prop_male),
+                   SE = sd(prop_male) / sqrt(length(prop_male)),
+                   lower_CI = 
+                     mean(prop_male) - (sd(prop_male) / sqrt(length(prop_male)) * 1.96),
+                   upper_CI = 
+                     mean(prop_male) + (sd(prop_male) / sqrt(length(prop_male)) * 1.96))
+```
+
+Plot the species summary.
+
+```{r, fig.align='center', fig.height=4, fig.width=6}
+# draw the blank plot for the background
+Figure_1_blank <- 
+  ggplot2::ggplot(data = plover_summary, aes(y = mean, x = species)) + 
+            theme_bw() +
+            annotate("rect", xmin = 0, xmax = 6, ymin = 0, ymax = 0.5, alpha = 0.7,
+                     fill = RColorBrewer::brewer.pal(8, "Dark2")[c(1)]) +
+            annotate("rect", xmin = 0, xmax = 6, ymin = 0.5, ymax = 1, alpha = 0.7,
+                     fill = RColorBrewer::brewer.pal(8, "Dark2")[c(2)]) +
+                theme(text = element_text(colour = "white"),
+                      legend.position = "none",
+                      legend.background = element_rect(fill = NA),
+                      axis.title.y = element_text(size = 12, margin = margin(0, 10, 0, 0)),
+                      axis.text.y  = element_text(size = 10), 
+                      axis.title.x = element_text(size = 12, margin = margin(20, 0, 0, 0)),
+                      axis.text.x  = element_text(size = 10),
+                      axis.ticks.x = element_blank(),
+                      axis.ticks.y = element_line(size = 0.5, colour = "white"),
+                      axis.ticks.length = unit(0.2, "cm"),
+                      panel.grid.major = element_blank(),
+                      panel.grid.minor = element_blank(),
+                      panel.border = element_blank(),
+                      panel.margin = unit(0.75, "lines"),
+                      plot.margin = unit(c(0.5, 1.5, 0.5 ,0), "cm")) +
+                scale_y_continuous(limits = c(0, 1), expand = c(0, 0)) +
+                scale_x_continuous(limits=c(0, 6),breaks=c(0, 1, 2), expand = c(0, 0)) +
+                xlab("Plover species") +
+                ylab("Hatching sex ratio (proportion male)")
+
+# draw the plot with the data
+Figure_1 <- 
+  ggplot2::ggplot(data = plover_summary, aes(y = mean, x = species)) + 
+            theme_bw() +
+            geom_pointrange(aes(ymin = lower_CI, ymax = upper_CI)) +
+            theme(legend.position = "none",
+                  panel.background = element_rect(fill = "transparent",colour = NA),
+                  plot.background = element_rect(fill = "transparent",colour = NA),
+                  axis.title.y = element_text(size = 12, margin = margin(0, 10, 0, 0)),
+                  axis.text.y  = element_text(size = 10), 
+                  axis.title.x = element_text(size = 12, margin = margin(20, 0, 0, 0)),
+                  axis.text.x  = element_text(size = 10),
+                  axis.ticks.x = element_blank(),
+                  axis.ticks.y = element_line(size = 0.5, colour = "grey40"),
+                  axis.ticks.length = unit(0.2, "cm"),
+                  panel.grid.major = element_blank(),
+                  panel.grid.minor = element_blank(),
+                  panel.border = element_blank(),
+                  panel.margin = unit(0.75, "lines"),
+                  plot.margin = unit(c(0.5, 1.5, 0.5, 0), "cm")) +
+            scale_y_continuous(limits = c(0, 1), expand = c(0, 0)) +
+            xlab("Plover species") +
+            ylab("Hatching sex ratio (proportion male)")
+
+# Print the two layers
+grid::pushViewport(
+  grid::viewport(
+    layout = grid::grid.layout(1, 1, widths = unit(1, "npc"))))
+print(Figure_1_blank, newpage = FALSE)
+print(Figure_1, newpage = FALSE)
+grid::popViewport()
+```
+
+***
+## Does hatching sex ratio vary seasonaly or annually?
+
+- **Kittlitz's plover**
+
+```{r}
+# Annual model
+KiP_HSR_year <- 
+  lme4::glmer(male ~ (1| nestID) + year, 
+              data = dplyr::filter(plover_chick, species == "Kittlitz's"),
+              family = binomial)
+
+# Seasonal model
+KiP_HSR_season <- 
+  lme4::glmer(male ~ (1| nestID) + dateinseason, 
+              data = dplyr::filter(plover_chick, species == "Kittlitz's"),
+              family = binomial)
+
+# No temporal effect model
+KiP_HSR_null <- 
+  lme4::glmer(male ~ (1| nestID), 
+              data = dplyr::filter(plover_chick, species == "Kittlitz's"),
+              family = binomial)
+
+# Assess the effect of year
+anova(KiP_HSR_year, KiP_HSR_null)
+
+# Assess the effect of season
+anova(KiP_HSR_season, KiP_HSR_null)
+```
+
+- **Madagascar plover**
+
+```{r, warning=FALSE}
+# Annual model
+MP_HSR_year <- 
+  lme4::glmer(male ~ (1| nestID) + year, 
+              data = dplyr::filter(plover_chick, species == "Madagascar"),
+              family = binomial)
+
+# Seasonal model
+MP_HSR_season <- 
+  lme4::glmer(male ~ (1| nestID) + dateinseason, 
+              data = dplyr::filter(plover_chick, species == "Madagascar"),
+              family = binomial)
+
+# No temporal effect model
+MP_HSR_null <- 
+  lme4::glmer(male ~ (1| nestID), 
+              data = dplyr::filter(plover_chick, species == "Madagascar"),
+              family = binomial)
+
+# Assess the effect of year
+anova(MP_HSR_year, MP_HSR_null)
+
+# Assess the effect of season
+anova(MP_HSR_season, MP_HSR_null)
+```
+
+- **Madagascar plover**
+
+```{r, warning=FALSE}
+# Annual model
+WfP_HSR_year <- 
+  lme4::glmer(male ~ (1| nestID) + year, 
+              data = dplyr::filter(plover_chick, species == "White-fronted"),
+              family = binomial)
+
+# Seasonal model
+WfP_HSR_season <- 
+  lme4::glmer(male ~ (1| nestID) + dateinseason, 
+              data = dplyr::filter(plover_chick, species == "White-fronted"),
+              family = binomial)
+
+# No temporal effect model
+WfP_HSR_null <- 
+  lme4::glmer(male ~ (1| nestID), 
+              data = dplyr::filter(plover_chick, species == "White-fronted"),
+              family = binomial)
+
+# Assess the effect of year
+anova(WfP_HSR_year, WfP_HSR_null)
+
+# Assess the effect of season
+anova(WfP_HSR_season, WfP_HSR_null)
+```
