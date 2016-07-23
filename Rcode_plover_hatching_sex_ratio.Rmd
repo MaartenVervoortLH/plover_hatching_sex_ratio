@@ -38,7 +38,7 @@ library(grid)
 
 To start, please load the following dataset into your R environment:
 
-- **plover chick data** in which each row is a single chick. 
+- **plover chick data** contains the raw chick data collected from the field. Each row is a single capture of a chick at its nest.  Each chick has a unique identifier *chickID* and each brood has a unique identifier *nestID*. The geographic coordinates are also shown as *easting* and *northing* (Coordinate System: UTM Zone 38S Tananarive 1925) which are presented in the map to illustrate the spatial distribution of the nests used in this study. A chick can be one of three plover *species* (Kittlitz's, Madagascar, or White-fronted). *year* indicates the year during which an individual was captured and *dateinseason* indicates the number of days since the start of the breeding season that an individual hatched. The dummy variables *male* and *female* indicate the molecular sex-type of an individual with "1" signifing the sex.
 
 ```{r}
 plover_chick <- 
