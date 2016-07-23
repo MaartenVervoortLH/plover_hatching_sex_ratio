@@ -48,14 +48,14 @@ plover_chick <-
              sep = "\t")
 ```
 
-Define the variables of the `plover_ind` correctly.  `easting`, `northing`, and `prop_male` need to recognized as numeric; `chickID`, `nest`, `nestID`, `species`, `sex`, and `year` need to recognized as factors; and `hatch_date` needs to be recognized as a date.
+Define the variables of the `plover_chick` correctly: `easting` and `northing` need to recognized as numeric, and `chickID`, `nestID`, `species`, and `year` need to recognized as factors.
 
 ```{r}
 plover_chick[,c("easting", "northing")] <- 
   lapply(plover_chick[,c("easting", "northing")], as.numeric)
 
-plover_chick[,c("chickID", "nestID", "species", "sex", "year")] <- 
-  lapply(plover_chick[,c("chickID", "nestID", "species", "sex", "year")], as.factor)
+plover_chick[,c("chickID", "nestID", "species", "year")] <- 
+  lapply(plover_chick[,c("chickID", "nestID", "species", "year")], as.factor)
 ```
 
 Summarize the `plover_chick` data such that each row represents data for a nest.
@@ -188,6 +188,8 @@ grid::popViewport()
 
 ***
 ## Does hatching sex ratio vary seasonaly or annually?
+
+Linear regression mixed models for each species predicting annual and seasonal deviations in hatching sex ratio while controlling for non-independence in siblings (i.e. random effect: `nestID`).
 
 - **Kittlitz's plover**
 
